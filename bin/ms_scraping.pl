@@ -6,12 +6,12 @@ use utf8;
 use feature qw(say);
 use FindBin qw($Bin $Script);
 use File::Spec;
-use MorningStarScraping;
-use MorningStarScraping::Util qw(save_file trim);
+use FundScraping;
+use FundScraping::Util qw(save_file trim);
 use Getopt::Long::Subcommand;
 use Pod::Usage 'pod2usage';
 
-our $CACHE_DIR = File::Spec->catfile($ENV{HOME}, ".mss_cache");
+our $CACHE_DIR = File::Spec->catfile($ENV{HOME}, ".fund_cache");
 our $FORMAT    = "json";
 
 our $VERSION = '1.0';
@@ -83,13 +83,13 @@ $opts{format}      //= $FORMAT;
 die "Missing subcommand\n" if scalar(@{$res->{subcommand}}) == 0;
 die "GetOptions failed!\n" if $res->{success} == 0;
 
-my $ms = MorningStarScraping->new({
+my $fund = FundScraping->new({
 								cache_dir      => $opts{cache_dir},
 								force          => $opts{force},
 								no_store_cache => $opts{no_store_cache},
 								verbose        => $opts{verbose}
 							});
-my $obj = $ms->load($res->{subcommand}->[0]);
+my $obj = $fund->load("morning_star", $res->{subcommand}->[0]);
 
 if (!$obj->updated) {
 	say "not updated. exit.";

@@ -1,2 +1,5 @@
-# perl-MorningStarScraping
-MorningStar(https://www.morningstar.co.jp/) scraping module
+# perl-FundScraping
+
+investment trust fund scraping tool
+
+- MorningStar(https://www.morningstar.co.jp/)

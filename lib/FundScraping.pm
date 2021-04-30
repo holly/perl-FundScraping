@@ -1,4 +1,4 @@
-package MorningStarScraping;
+package FundScraping;
 
 use strict;
 use warnings;
@@ -14,11 +14,10 @@ use FindBin qw($Script $Bin);
 #use Selenium::Firefox;
 use Selenium::Remote::Driver;
 use Time::HiRes qw(gettimeofday tv_interval);
-use Text::ParseWords;
 use UNIVERSAL::require;
-use MorningStarScraping::Util qw(:all);
+use FundScraping::Util qw(:all);
 
-our $DEFAULT_CACHE_DIR          = File::Spec->catfile($ENV{HOME}, ".mss_cache");
+our $DEFAULT_CACHE_DIR          = File::Spec->catfile($ENV{HOME}, ".fund_cache");
 our $SELENIUM_TIMEOUT_MILLISECS = 10000;
 our $USER_AGENT                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0";
 
@@ -36,16 +35,18 @@ sub new {
 
 sub load_classes {
 
-	my $module_path    = File::Spec->rel2abs(dirname(__FILE__));
-	my $target_dir     = File::Spec->catfile($module_path, __PACKAGE__);
+	my($self, $subclass) = @_;
+	my $subclass_dirname  = camelize($subclass);
+	my $module_path       = File::Spec->rel2abs(dirname(__FILE__));
+	my $target_dir        = File::Spec->catfile($module_path, __PACKAGE__, $subclass_dirname);
 	my @classes;
 	my $d = DirHandle->new($target_dir);
 	while (my $entry = $d->read) {
-		if ($entry !~ /\.pm$/ || $entry eq "Util.pm") {
+		if ($entry !~ /\.pm$/) {
 			next;
 		}
 		$entry =~ s/\.pm$//;
-		push @classes, __PACKAGE__ . "::" . $entry;
+		push @classes, __PACKAGE__ . "::" . $subclass_dirname . "::" . $entry;
 	}
 	$d->close;
 	return @classes;
@@ -53,10 +54,11 @@ sub load_classes {
 
 sub load_subcommands {
 
-	my @classes = load_classes();
+	my($self, $subclass) = @_;
+	my @classes = $self->load_classes($subclass);
 	my @subcommands;
 	foreach my $class (@classes) {
-		my $prefix = __PACKAGE__ . "::";
+		my $prefix = __PACKAGE__ . "::" . camelize($subclass) . "::";
 		$class =~ s/^$prefix//g;
 		push @subcommands, decamelize($class);
 	}
@@ -65,8 +67,8 @@ sub load_subcommands {
 
 sub load {
 
-	my($self, $subcommand) = @_;
-	my $module = __PACKAGE__ . "::" . camelize($subcommand);
+	my($self, $subclass, $subcommand) = @_;
+	my $module = __PACKAGE__ . "::" . camelize($subclass) . "::" . camelize($subcommand);
 	$module->require or die $@;
 	return $module->new({ driver => $self->driver, cache_dir => $self->cache_dir, force => $self->force, no_store_cache => $self->no_store_cache });
 }
@@ -88,7 +90,7 @@ sub _init {
 
 	my $self = shift;
 
-	$ENV{MOZ_HEADLESS} = 1;
+	#$ENV{MOZ_HEADLESS} = 1;
 	#my $driver = Selenium::Firefox->new(marionette_enable => 1);
 	my $driver = Selenium::Remote::Driver->new(
 			'remove_server_addr' => "127.0.0.1",

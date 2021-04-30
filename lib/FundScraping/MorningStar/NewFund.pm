@@ -1,4 +1,4 @@
-package MorningStarScraping::NewFund;
+package FundScraping::MorningStar::NewFund;
 
 use strict;
 use warnings;
@@ -8,7 +8,7 @@ use parent qw(Class::Accessor);
 use Fcntl qw(:DEFAULT :flock :seek);
 use File::Spec;
 use Selenium::Waiter;
-use MorningStarScraping::Util qw(:all);
+use FundScraping::Util qw(:all);
 
 our @KEYS              = qw(start_date fund_code fund_name fund_nickname fund_company redemption_date first_settlement_date trust_fee partial_redemption_charge overview url);
 our @KEYS_JP           = qw(設定日 ファンドコード ファンド名 ファンド名愛称 運用会社 償還日 初回決算日 信託報酬（%） 売却時信託財産留保額（%） ファンド概要 URL);
@@ -174,7 +174,7 @@ sub is_newfunds_updated {
 	if ($self->force) {
 		return 1;
 	}
-	return !check_equal_in_file($last_updated, $self->last_updated_file) ? 1 : 0;
+	return !equal_in_file($last_updated, $self->last_updated_file) ? 1 : 0;
 }
 
 sub read_newfunds_urllist {

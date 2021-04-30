@@ -1,4 +1,4 @@
-package MorningStarScraping::Util;
+package FundScraping::Util;
 
 use strict;
 use warnings;
@@ -12,7 +12,7 @@ use Fcntl qw(:DEFAULT :flock :seek);
 use JSON;
 use POSIX qw(ceil);
 
-our @EXPORT_OK   = qw(array2csv array2ltsv array_dedup camelize conv_csv_str conv_normal_str check_equal_in_file decamelize fold in_array read_file save_file touch_file ref2dumper ref2json trim);
+our @EXPORT_OK   = qw(array2csv array2ltsv array_dedup camelize conv_csv_str conv_normal_str decamelize equal_file equal_in_file fold in_array read_file save_file touch_file ref2dumper ref2json trim);
 our %EXPORT_TAGS = ( all => [ @EXPORT_OK ] );
 our $VERSION     = '1.0';
 our $FOLD_LENGTH = 40;
@@ -53,14 +53,14 @@ sub array_dedup {
 sub array_dedup2 {
 
 	my @array = @_;
-	my @new_array;
+	my @tmp;
 	foreach my $val (@array) {
-		if (in_array($val, \@new_array)) {
+		if (in_array($val, \@tmp)) {
 			next;
 		}
-		push @new_array, $val;
+		push @tmp, $val;
 	}
-	return @new_array;
+	return @tmp;
 }
 
 sub camelize {
@@ -112,7 +112,24 @@ sub conv_normal_str {
 	return $str;
 }
 
-sub check_equal_in_file {
+
+sub equal_file {
+
+	my($file1, $file2, $binmode) = @_;
+	my $flag = 0;
+	if (! -f $file1 || ! -f $file2) {
+		return $flag;
+	}
+	my $val1 = trim(read_file($file1, $binmode));
+	my $val2 = trim(read_file($file2, $binmode));
+
+	if ($val1 eq $val2) {
+		$flag = 1;
+	}
+	return $flag;
+}
+
+sub equal_in_file {
 
 	my($check_val, $file, $binmode) = @_;
 	my $flag = 0;
@@ -126,6 +143,7 @@ sub check_equal_in_file {
 	}
 	return $flag;
 }
+
 
 sub fold {
 
