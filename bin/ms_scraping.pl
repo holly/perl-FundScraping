@@ -7,7 +7,7 @@ use feature qw(say);
 use FindBin qw($Bin $Script);
 use File::Spec;
 use MorningStarScraping;
-use MorningStarScraping::Util qw(save_file);
+use MorningStarScraping::Util qw(save_file trim);
 use Getopt::Long::Subcommand;
 use Pod::Usage 'pod2usage';
 
@@ -29,6 +29,9 @@ my $res = GetOptions(
 				},
 				'force|f'     => {
 					handler => \$opts{force}
+				},
+				'no-store-cache'    => {
+					handler => \$opts{no_store_cache}
 				},
 				'pretty|p'    => {
 					handler => \$opts{pretty}
@@ -74,14 +77,18 @@ my $res = GetOptions(
 			}
 		);
 
-$opts{cache_dir}  //= $CACHE_DIR;
-$opts{format}     //= $FORMAT;
+$opts{cache_dir}   //= $CACHE_DIR;
+$opts{format}      //= $FORMAT;
 
 die "Missing subcommand\n" if scalar(@{$res->{subcommand}}) == 0;
 die "GetOptions failed!\n" if $res->{success} == 0;
 
-
-my $ms = MorningStarScraping->new({ cache_dir => $opts{cache_dir}, force => $opts{force}, verbose => $opts{verbose} });
+my $ms = MorningStarScraping->new({
+								cache_dir      => $opts{cache_dir},
+								force          => $opts{force},
+								no_store_cache => $opts{no_store_cache},
+								verbose        => $opts{verbose}
+							});
 my $obj = $ms->load($res->{subcommand}->[0]);
 
 if (!$obj->updated) {
@@ -92,12 +99,12 @@ if (!$obj->updated) {
 my @urllist = $obj->get_newfunds_urllist;
 my @details = $obj->get_newfund_details(@urllist);
 
-if (scalar(@details) < 1) {
+if (scalar(@details) == 0) {
 	say "new fund is not exists. exit.";
 	exit;
 }
 
-my $data = $obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} });
+my $data = trim($obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} }));
 #$ms->output($data, { file => "./a.csv", binmode => ":encoding(cp932)" });
 
 if ($opts{output}) {
@@ -138,7 +145,7 @@ Clear cache files in cache directory and force exection.
 
 =item B<--format>
 
-Output format [csv|csv2|dumper|json]. default:json
+Output format [csv|csv2|dumper|ltsv|json]. default:json
 
 =item B<--pretty|p>
 

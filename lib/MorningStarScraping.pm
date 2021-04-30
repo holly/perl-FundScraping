@@ -11,7 +11,8 @@ use Fcntl qw(:DEFAULT :flock :seek);
 use File::Spec;
 use File::Basename;
 use FindBin qw($Script $Bin);
-use Selenium::Firefox;
+#use Selenium::Firefox;
+use Selenium::Remote::Driver;
 use Time::HiRes qw(gettimeofday tv_interval);
 use Text::ParseWords;
 use UNIVERSAL::require;
@@ -21,7 +22,7 @@ our $DEFAULT_CACHE_DIR          = File::Spec->catfile($ENV{HOME}, ".mss_cache");
 our $SELENIUM_TIMEOUT_MILLISECS = 10000;
 our $USER_AGENT                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0";
 
-__PACKAGE__->mk_accessors(qw(cache_dir driver stash force verbose));
+__PACKAGE__->mk_accessors(qw(cache_dir driver force no_store_cache stash verbose));
 
 sub new {
 
@@ -67,18 +68,19 @@ sub load {
 	my($self, $subcommand) = @_;
 	my $module = __PACKAGE__ . "::" . camelize($subcommand);
 	$module->require or die $@;
-	return $module->new({ driver => $self->driver, cache_dir => $self->cache_dir, force => $self->force });
+	return $module->new({ driver => $self->driver, cache_dir => $self->cache_dir, force => $self->force, no_store_cache => $self->no_store_cache });
 }
 
 
 sub shutdown_selenium {
 
 	my $self = shift;
-	{
-		local *STDOUT;
-		open STDOUT, '>', undef;
-		$self->driver->shutdown_binary;
-	}
+	$self->driver->quit;
+	#{
+	#	local *STDOUT;
+	#	open STDOUT, '>', undef;
+	#	$self->driver->shutdown_binary;
+	#}
 }
 
 
@@ -87,7 +89,16 @@ sub _init {
 	my $self = shift;
 
 	$ENV{MOZ_HEADLESS} = 1;
-	my $driver = Selenium::Firefox->new(marionette_enable => 1);
+	#my $driver = Selenium::Firefox->new(marionette_enable => 1);
+	my $driver = Selenium::Remote::Driver->new(
+			'remove_server_addr' => "127.0.0.1",
+			'extra_capabilities' => {
+				'moz:firefoxOptions' => {
+					"args" => [ "--headless" ],
+				},
+		}
+	);
+
 	$driver->ua->agent($USER_AGENT);
 	map { $driver->set_timeout($_, $SELENIUM_TIMEOUT_MILLISECS) }  ("script", "implicit", "page load") ;
 	$self->driver($driver);

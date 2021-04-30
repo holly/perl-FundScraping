@@ -7,12 +7,15 @@ use feature qw(say);
 use utf8;
 use parent qw(Exporter);
 use Data::Dumper;
+use Encode;
 use Fcntl qw(:DEFAULT :flock :seek);
 use JSON;
+use POSIX qw(ceil);
 
-our @EXPORT_OK   = qw(array2csv camelize conv_csv_str conv_normal_str check_equal_in_file decamelize in_array read_file save_file touch_file ref2dumper ref2json trim);
+our @EXPORT_OK   = qw(array2csv array2ltsv array_dedup camelize conv_csv_str conv_normal_str check_equal_in_file decamelize fold in_array read_file save_file touch_file ref2dumper ref2json trim);
 our %EXPORT_TAGS = ( all => [ @EXPORT_OK ] );
 our $VERSION     = '1.0';
+our $FOLD_LENGTH = 40;
 
 sub array2csv {
 
@@ -26,6 +29,38 @@ sub array2csv {
 		push @data, join(",", map { conv_csv_str($ref->{$_}) } @{$keys});
 	}
 	return join("\n", @data);
+}
+
+sub array2ltsv {
+
+	my($arrayref, $keys) = @_;
+
+	my @data;
+
+	foreach my $ref (@{$arrayref}) {
+		push @data, join("\t", map { sprintf("%s:%s", $_, conv_ltsv_str($ref->{$_})) } @{$keys});
+	}
+	return join("\n", @data);
+}
+
+sub array_dedup {
+
+	my @array = @_;
+	my %hash = map { $_ => 1 } @array;
+	return keys %hash;
+}
+
+sub array_dedup2 {
+
+	my @array = @_;
+	my @new_array;
+	foreach my $val (@array) {
+		if (in_array($val, \@new_array)) {
+			next;
+		}
+		push @new_array, $val;
+	}
+	return @new_array;
 }
 
 sub camelize {
@@ -45,12 +80,24 @@ sub conv_csv_str {
 
 	my $str = shift;
 
-	$str =~ s/(\r\n|\r|\n)//g;
+	$str =~ s/(\r\n|\r|\n)/ /g;
 	$str =~ s/,/，/g;
 	$str =~ s/\t/ /g;
 	$str =~ s/"/”/g;
 	$str = conv_normal_str($str);
 	$str = "\"" . $str . "\"";
+
+	return $str;
+}
+
+sub conv_ltsv_str {
+
+	my $str = shift;
+
+	$str =~ s/(\r\n|\r|\n)/ /g;
+	$str =~ s/:/：/g;
+	$str =~ s/\t/ /g;
+	$str = conv_normal_str($str);
 
 	return $str;
 }
@@ -78,6 +125,27 @@ sub check_equal_in_file {
 		$flag = 1;
 	}
 	return $flag;
+}
+
+sub fold {
+
+	my($val, $fold_length) = @_;
+
+	if (!$fold_length) {
+		$fold_length = $FOLD_LENGTH
+	}
+
+	if (!utf8::is_utf8($val)) {
+		$val = decode("UTF-8", $val);
+	}
+
+	my $length = length($val);
+	my $count  = ceil($length / $fold_length);
+	my @data;
+	for (my $i = 0; $i < $count; $i++) {
+		push @data, substr($val, ($i * $fold_length), $fold_length);
+	}
+	return join("\n", @data);
 }
 
 sub in_array {

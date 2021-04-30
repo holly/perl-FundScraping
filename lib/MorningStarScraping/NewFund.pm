@@ -10,13 +10,13 @@ use File::Spec;
 use Selenium::Waiter;
 use MorningStarScraping::Util qw(:all);
 
-our @KEYS             = qw(start_date fund_code fund_name fund_nickname fund_company redemption_date first_settlement_date trust_fee partial_redemption_charge overview url);
+our @KEYS              = qw(start_date fund_code fund_name fund_nickname fund_company redemption_date first_settlement_date trust_fee partial_redemption_charge overview url);
 our @KEYS_JP           = qw(設定日 ファンドコード ファンド名 ファンド名愛称 運用会社 償還日 初回決算日 信託報酬（%） 売却時信託財産留保額（%） ファンド概要 URL);
 our $NEWFUND_URL       = "https://www.morningstar.co.jp/newfundWeb/";
 our $LAST_UPDATED_FILE = "new_investment_trusts_last_updated.txt";
 our $URLLIST_FILE      = "new_investment_trusts_urllist.txt";
 
-__PACKAGE__->mk_accessors(qw(driver cache_dir force last_updated last_updated_file updated urllist urllist_file));
+__PACKAGE__->mk_accessors(qw(driver cache_dir force no_store_cache last_updated last_updated_file updated urllist urllist_file));
 
 sub new {
 
@@ -35,8 +35,6 @@ sub _init {
 
 	$self->last_updated_file(File::Spec->catfile($self->cache_dir, $LAST_UPDATED_FILE));
 	$self->urllist_file(File::Spec->catfile($self->cache_dir, $URLLIST_FILE));
-
-	$self->clear_cache if $self->force;
 
 	my $last_updated = $self->get_newfunds_last_updated;
 	if ($self->is_newfunds_updated($last_updated)) {
@@ -69,6 +67,8 @@ sub convert {
 
 	if ($format eq "json") {
 		return ref2json($ref, $pretty);
+	} elsif ($format eq "ltsv") {
+		return array2ltsv($ref, [@KEYS]);
 	} elsif ($format eq "csv") {
 		return array2csv($ref, [@KEYS]);
 	} elsif ($format eq "csv2") {
@@ -156,8 +156,9 @@ sub get_newfund_details {
 	LOOP_OF_NEW_URLLIST:
 	foreach my $url (@newfunds_urllist) {
 
-		next if in_array($url, \@urllist);
-
+		if(!$self->force && in_array($url, \@urllist)) {
+			next;
+		}
 		push @alldata, $self->get_newfund_detail($url);
 		push @urllist, $url;
 	}
@@ -170,7 +171,10 @@ sub is_newfunds_updated {
 
 	my ($self, $last_updated) = @_;
 
-	return check_equal_in_file($last_updated, $self->last_updated_file) ? 0 : 1;
+	if ($self->force) {
+		return 1;
+	}
+	return !check_equal_in_file($last_updated, $self->last_updated_file) ? 1 : 0;
 }
 
 sub read_newfunds_urllist {
@@ -196,7 +200,7 @@ sub save_newfunds_urllist {
 
 	my ($self) = @_;
 
-	my $data = join("\n", @{$self->urllist});
+	my $data = join("\n", array_dedup(@{$self->urllist}));
 	save_file($data, $self->urllist_file);
 }
 
@@ -210,7 +214,13 @@ sub save_last_updated {
 sub DESTROY {
 
 	my $self = shift;
-	$self->save_cache if $self->updated;
+	if (!$self->updated) {
+		return;
+	}
+	if ($self->no_store_cache) {
+		return;
+	}
+	$self->save_cache;
 }
 
 
