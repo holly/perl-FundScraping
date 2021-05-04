@@ -20,6 +20,7 @@ sub _init {
 
 	my $self = shift;
 
+	$self->no_store_cache(1);
 }
 
 sub clear_cache {
@@ -132,10 +133,5 @@ SCRIPT
 }
 
 
-sub save_cache {
-
-	my $self = shift;
-
-}
 
 1;

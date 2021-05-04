@@ -6,8 +6,9 @@ use utf8;
 use feature qw(say);
 use parent qw(Class::Accessor);
 use FundScraping::Util qw(:all);
+use Storable qw(lock_nstore lock_retrieve);
 
-__PACKAGE__->mk_accessors(qw(driver cache_dir force no_store_cache last_updated last_updated_file updated urllist urllist_file));
+__PACKAGE__->mk_accessors(qw(driver cache_dir force no_store_cache updated _cache));
 
 sub new {
 
@@ -25,6 +26,20 @@ sub _init {
 	my $self = shift;
 
 	die "your class must be implemented _init.";
+}
+
+sub cache_file {
+
+	my $self = shift;
+
+	if (exists $self->{_cache_file}) {
+		return $self->{_cache_file};
+	}
+
+	my $class = ref($self);
+	my $pkg_last = (split /::/, $class)[-1];
+	$self->{_cache_file} = File::Spec->catfile($self->cache_dir, sprintf("%s.cache", decamelize($pkg_last)));
+	return $self->{_cache_file};
 }
 
 sub clear_cache {
@@ -61,17 +76,25 @@ sub convert {
 }
 
 
+sub read_cache {
+
+	my $self = shift;
+
+	my $cache = -e $self->cache_file ? lock_retrieve($self->cache_file) : {};
+	$self->_cache($cache);
+}
 
 sub save_cache {
 
 	my $self = shift;
 
-	warn "your class must be implemented save_cache. If your class don't need it, override this method.";
+	lock_nstore($self->_cache, $self->cache_file);
 }
 
 sub DESTROY {
 
 	my $self = shift;
+
 	if ($self->no_store_cache) {
 		return;
 	}
