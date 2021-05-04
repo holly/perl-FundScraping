@@ -81,7 +81,7 @@ sub conv_csv_str {
 	my $str = shift;
 
 	$str =~ s/(\r\n|\r|\n)/ /g;
-	$str =~ s/,/，/g;
+	$str =~ s/,//g;
 	$str =~ s/\t/ /g;
 	$str =~ s/"/”/g;
 	$str = conv_normal_str($str);

@@ -4,6 +4,7 @@ use strict;
 use warnings;
 use utf8;
 use feature qw(say);
+use Encode;
 use FindBin qw($Bin $Script);
 use File::Spec;
 use FundScraping;
@@ -13,6 +14,7 @@ use Pod::Usage 'pod2usage';
 
 our $CACHE_DIR = File::Spec->catfile($ENV{HOME}, ".fund_cache");
 our $FORMAT    = "json";
+our $HANDLERS  = { new_fund => \&new_fund, detail_search_result => \&detail_search_result };
 
 our $VERSION = '1.0';
 our $AUTHOR  = 'holly';
@@ -71,8 +73,19 @@ my $res = GetOptions(
 				new_fund => {
 					summary => "parse new_fund",
 				},
-				hogehoge => {
-					summary => "parse new_fund",
+				detail_search_result => {
+					summary => "parse detail_search_result",
+					options => {
+						'count|c' => {
+							handler => \$opts{count}
+						},
+						'page|P=i' => {
+							handler => \$opts{page}
+						},
+						'word|w=s' => {
+							handler => \$opts{word}
+						}
+					}
 				}
 			}
 		);
@@ -89,33 +102,61 @@ my $fund = FundScraping->new({
 								no_store_cache => $opts{no_store_cache},
 								verbose        => $opts{verbose}
 							});
-my $obj = $fund->load("morning_star", $res->{subcommand}->[0]);
+my $subcommand = $res->{subcommand}->[0];
+my $obj = $fund->load("morning_star", $subcommand);
 
-if (!$obj->updated) {
-	say "not updated. exit.";
-	exit;
-}
-
-my @urllist = $obj->get_newfunds_urllist;
-my @details = $obj->get_newfund_details(@urllist);
-
-if (scalar(@details) == 0) {
-	say "new fund is not exists. exit.";
-	exit;
-}
-
-my $data = trim($obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} }));
-#$ms->output($data, { file => "./a.csv", binmode => ":encoding(cp932)" });
+my $output = $HANDLERS->{$subcommand}->();
 
 if ($opts{output}) {
 	my $binmode = $opts{format} eq "csv" ? ":encoding(cp932)" : ":utf8";
-	save_file($data, $opts{output}, $binmode);
+	save_file($output, $opts{output}, $binmode);
 } else {
 	binmode STDOUT, ":utf8";
-	say $data;
+	say $output;
 }
 
+$obj = undef;
+
 exit;
+
+sub new_fund {
+
+	if (!$obj->updated) {
+		say "not updated. exit.";
+		exit;
+	}
+
+	my @urllist = $obj->get_newfunds_urllist;
+	my @details = $obj->get_newfund_details(@urllist);
+
+	if (scalar(@details) == 0) {
+		say "new fund is not exists. exit.";
+		exit;
+	}
+
+	my $output = trim($obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} }));
+	return $output;
+}
+
+sub detail_search_result {
+
+	my $word = $opts{word};
+	if (!$word) {
+		say "word is not defined. exit.";
+		exit;
+	}
+	my $decoded_word = decode_utf8($word);
+	if ($opts{count}) {
+		return $obj->get_search_funds_count($decoded_word);
+	}
+	my @funds = $obj->get_search_funds($decoded_word, $opts{page});
+	if (scalar(@funds) == 0) {
+		say "fund ($word) is not exists. exit.";
+		exit;
+	}
+	my $output = trim($obj->convert(\@funds, { format => $opts{format}, pretty => $opts{pretty} }));
+	return $output;
+}
 
 __END__
 
@@ -123,13 +164,27 @@ __END__
 
 ms_scraping.pl [subcommand] [option...]
 
- Options:
-   --cache-dir       script cache directory
-   --force|f         clear cache and force execution
-   --format          output format [csv|csv2|dumper|json]
-   --pretty|p        json format pretty mode
-   --help|h          brief help message
-   --version         output version
+
+  Subcommand:
+    new_fund
+    detail_search_result
+
+  Options:
+    --cache-dir       script cache directory
+    --force|f         clear cache and force execution
+    --format          output format [csv|csv2|dumper|json]
+    --no-store-cache  no results cache mode
+    --output|o        output specified file path
+    --pretty|p        json format pretty mode
+    --help|h          brief help message
+    --verbose         verbose mode
+    --version         output version
+
+=head1 SUBCOMMAND
+
+=item B<new_fund>
+
+=item B<detail_search_result>
 
 =head1 OPTIONS
 
@@ -137,7 +192,7 @@ ms_scraping.pl [subcommand] [option...]
 
 =item B<--cache-dir>
 
-Script cache directory. default:$HOME/.mss_cache
+Script cache directory. default:$HOME/.fund_cache
 
 =item B<--force|f>
 
