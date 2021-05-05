@@ -32,8 +32,8 @@ my $res = GetOptions(
 				'force|f'     => {
 					handler => \$opts{force}
 				},
-				'no-store-cache'    => {
-					handler => \$opts{no_store_cache}
+				'store-cache'    => {
+					handler => \$opts{store_cache}
 				},
 				'pretty|p'    => {
 					handler => \$opts{pretty}
@@ -72,6 +72,11 @@ my $res = GetOptions(
 			subcommands => {
 				new_fund => {
 					summary => "parse new_fund",
+					options => {
+						'check-updated|c' => {
+							handler => \$opts{check_updated}
+						}
+					}
 				},
 				detail_search_result => {
 					summary => "parse detail_search_result",
@@ -99,7 +104,7 @@ die "GetOptions failed!\n" if $res->{success} == 0;
 my $fund = FundScraping->new({
 								cache_dir      => $opts{cache_dir},
 								force          => $opts{force},
-								no_store_cache => $opts{no_store_cache},
+								store_cache    => $opts{store_cache},
 								verbose        => $opts{verbose}
 							});
 my $subcommand = $res->{subcommand}->[0];
@@ -120,6 +125,19 @@ $obj = undef;
 exit;
 
 sub new_fund {
+
+	if ($opts{check_updated}) {
+		my $message = "";
+		my $exit = 0;
+		if ($obj->updated) {
+			$message = "new_updated:" . $obj->last_updated;
+		} else {
+			$message = "not updated. exit.";
+			$exit = 1;
+		}
+		say $message;
+		exit $exit;
+	}
 
 	if (!$obj->updated) {
 		say "not updated. exit.";
@@ -143,7 +161,7 @@ sub detail_search_result {
 	my $word = $opts{word};
 	if (!$word) {
 		say "word is not defined. exit.";
-		exit;
+		exit 1;
 	}
 	my $decoded_word = decode_utf8($word);
 	if ($opts{count}) {
@@ -152,7 +170,7 @@ sub detail_search_result {
 	my @funds = $obj->get_search_funds($decoded_word, $opts{page});
 	if (scalar(@funds) == 0) {
 		say "fund ($word) is not exists. exit.";
-		exit;
+		exit 1;
 	}
 	my $output = trim($obj->convert(\@funds, { format => $opts{format}, pretty => $opts{pretty} }));
 	return $output;
@@ -164,7 +182,6 @@ __END__
 
 ms_scraping.pl [subcommand] [option...]
 
-
   Subcommand:
     new_fund
     detail_search_result
@@ -173,7 +190,7 @@ ms_scraping.pl [subcommand] [option...]
     --cache-dir       script cache directory
     --force|f         clear cache and force execution
     --format          output format [csv|csv2|dumper|json]
-    --no-store-cache  no results cache mode
+    --store-cache     results cache mode
     --output|o        output specified file path
     --pretty|p        json format pretty mode
     --help|h          brief help message

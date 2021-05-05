@@ -14,9 +14,6 @@ our @KEYS              = qw(start_date fund_code fund_name fund_nickname fund_co
 our @KEYS_JP           = qw(設定日 ファンドコード ファンド名 ファンド名愛称 運用会社 償還日 初回決算日 信託報酬（%） 売却時信託財産留保額（%） ファンド概要 URL);
 our $NEWFUND_URL       = "https://www.morningstar.co.jp/newfundWeb/";
 
-
-
-
 sub _init {
 
 	my $self = shift;
@@ -31,7 +28,6 @@ sub _init {
 	}
 	$self->last_updated($last_updated);
 }
-
 
 sub last_updated {
 
@@ -163,6 +159,9 @@ sub is_newfunds_updated {
 		return 1;
 	}
 	my $cache_last_updated = $self->last_updated;
+	if (!defined($cache_last_updated)) {
+		return 1;
+	}
 	return $last_updated ne $cache_last_updated ? 1 : 0;
 }
 
@@ -173,7 +172,7 @@ sub DESTROY {
 	if (!$self->updated) {
 		return;
 	}
-	if ($self->no_store_cache) {
+	if (!$self->store_cache) {
 		return;
 	}
 	$self->save_cache;

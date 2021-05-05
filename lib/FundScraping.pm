@@ -21,7 +21,7 @@ our $DEFAULT_CACHE_DIR          = File::Spec->catfile($ENV{HOME}, ".fund_cache")
 our $SELENIUM_TIMEOUT_MILLISECS = 10000;
 our $USER_AGENT                 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:86.0) Gecko/20100101 Firefox/86.0";
 
-__PACKAGE__->mk_accessors(qw(cache_dir driver force no_store_cache stash verbose));
+__PACKAGE__->mk_accessors(qw(cache_dir driver force store_cache stash verbose));
 
 sub new {
 
@@ -70,7 +70,7 @@ sub load {
 	my($self, $subclass, $subcommand) = @_;
 	my $module = __PACKAGE__ . "::" . camelize($subclass) . "::" . camelize($subcommand);
 	$module->require or die $@;
-	return $module->new({ driver => $self->driver, cache_dir => $self->cache_dir, force => $self->force, no_store_cache => $self->no_store_cache });
+	return $module->new({ driver => $self->driver, cache_dir => $self->cache_dir, force => $self->force, store_cache => $self->store_cache });
 }
 
 

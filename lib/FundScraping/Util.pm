@@ -11,37 +11,13 @@ use Encode;
 use Fcntl qw(:DEFAULT :flock :seek);
 use JSON;
 use POSIX qw(ceil);
+use Text::ParseWords;
 
-our @EXPORT_OK   = qw(array2csv array2ltsv array_dedup camelize conv_csv_str conv_normal_str decamelize equal_file equal_in_file fold in_array read_file save_file touch_file ref2dumper ref2json trim);
+our @EXPORT_OK   = qw(array_dedup camelize conv_csv_str conv_normal_str csv2ref decamelize equal_file equal_in_file equal_arrays equal_hashes fold json2ref in_array merge_arrayref read_file read_csv_file read_json_file save_file touch_file ref2csv ref2dumper ref2json ref2ltsv trim);
 our %EXPORT_TAGS = ( all => [ @EXPORT_OK ] );
 our $VERSION     = '1.0';
 our $FOLD_LENGTH = 40;
 
-sub array2csv {
-
-	my($arrayref, $keys, $keys_jp) = @_;
-
-	my @data;
-	my @headers = ref($keys_jp) ? @{$keys_jp} : @{$keys};
-	push @data, join(",", map { conv_csv_str($_) } @headers);
-
-	foreach my $ref (@{$arrayref}) {
-		push @data, join(",", map { conv_csv_str($ref->{$_}) } @{$keys});
-	}
-	return join("\n", @data);
-}
-
-sub array2ltsv {
-
-	my($arrayref, $keys) = @_;
-
-	my @data;
-
-	foreach my $ref (@{$arrayref}) {
-		push @data, join("\t", map { sprintf("%s:%s", $_, conv_ltsv_str($ref->{$_})) } @{$keys});
-	}
-	return join("\n", @data);
-}
 
 sub array_dedup {
 
@@ -112,6 +88,87 @@ sub conv_normal_str {
 	return $str;
 }
 
+sub csv2ref {
+
+	my($data) = @_;
+	if (!utf8::is_utf8($data)) {
+		$data = decode("UTF-8", $data);
+	}
+	$data = trim($data);
+	my @lines  = split /\n/, $data;
+	my $header = shift @lines;
+	my @keys   = parse_line(",", undef, $header);
+
+	my @alldata;
+	foreach my $line (@lines) {
+
+		my $ref = {};
+		my @fields = parse_line(",", undef, $line);
+		for (my $i = 0; $i < scalar(@keys); $i++) {
+			$ref->{$keys[$i]} = $fields[$i];
+		}
+		push @alldata, $ref;
+	}
+
+	return \@alldata;
+}
+
+sub equal_arrays {
+
+	my ( $a, $b ) = @_;
+	if ( scalar @$a != scalar @$b ) {
+		return 0;
+	}
+	for my $i ( 0 .. $#{$a} ) {
+		my $va = $a->[$i];
+		my $vb = $b->[$i];
+		if ( ref $va ne ref $vb ) {
+			return 0;
+		}
+		elsif ( ref $va eq 'SCALAR' && $va ne $vb ) {
+			return 0;
+		}
+		elsif ( ref $va eq 'ARRAY' && !arrays_equal( $va, $vb ) ) {
+			return 0;
+		}
+		elsif ( ref $va eq 'HASH' && !hashes_equal( $va, $vb ) ) {
+			return 0;
+		}
+	}
+	return 1;
+}
+
+sub equal_hashes {
+	my ( $a, $b ) = @_;
+	if ( scalar( keys %$a ) != scalar( keys %$b ) ) {
+		return 0;
+	}
+	for my $k ( keys %$a ) {
+		if ( exists $b->{$k} ) {
+			my $va = $a->{$k};
+			my $vb = $b->{$k};
+			if ( ref $va ne ref $vb ) {
+				return 0;
+			}
+			elsif ( ref $va eq 'SCALAR' && $va ne $vb ) {
+				return 0;
+			}
+			elsif ( ref $va eq 'ARRAY' && !equal_arrays( $va, $vb ) ) {
+				return 0;
+			}
+			elsif ( ref $va eq 'HASH' && !equal_hashes( $va, $vb ) ) {
+				return 0;
+			}
+			elsif ( $va ne $vb ) {
+				return 0;
+			}
+		}
+		else {
+			return 0;
+		}
+	}
+	return 1;
+}
 
 sub equal_file {
 
@@ -179,6 +236,42 @@ sub in_array {
 	return $flag;
 }
 
+
+sub json2ref {
+
+	my($data) = @_;
+	my $json = JSON->new->allow_nonref;
+	if (!utf8::is_utf8($data)) {
+		$data = decode("UTF-8", $data);
+	}
+	return $json->utf8(0)->decode($data);
+}
+
+sub merge_arrayref {
+
+	my($a, $b) = @_;
+
+	my @tmp;
+	LOOP_OF_B:
+	foreach my $hb (@{$b}) {
+
+		my $merge = 1;
+		LOOP_OF_A:
+		foreach my $ha (@{$a}) {
+			if (equal_hashes($ha, $hb)) {
+				$merge = 0;
+				last LOOP_OF_A;
+			}
+		}
+		if ($merge == 1) {
+			push @tmp, $hb;
+		}
+	}
+	push @tmp, @{$a};
+	return \@tmp;
+}
+
+
 sub read_file {
 
 	my($file, $binmode) = @_;
@@ -190,6 +283,25 @@ sub read_file {
 	my $data = do { local $/ = undef; <$fh> };
 	close $fh;
 	return $data;
+}
+
+sub read_csv_file {
+
+	my($file, $binmode) = @_;
+
+	if (!defined($binmode)) {
+		$binmode = ":encoding(cp932)";
+	}
+	my $data = read_file($file, $binmode);
+	return csv2ref($data);
+}
+
+sub read_json_file {
+
+	my($file, $binmode) = @_;
+
+	my $data = read_file($file, $binmode);
+	return json2ref($data);
 }
 
 sub save_file {
@@ -241,6 +353,50 @@ sub ref2json {
 	my $json = JSON->new->allow_nonref;
 	$json = $json->pretty(1) if $pretty;
 	return $json->utf8(0)->encode($ref);
+}
+
+
+sub ref2csv {
+
+	my($ref, $keys, $keys_jp) = @_;
+
+	my @data;
+	my @headers = ref($keys_jp) ? @{$keys_jp} : @{$keys};
+	push @data, join(",", map { conv_csv_str($_) } @headers);
+
+	my @array;
+	if (ref($ref) eq "ARRAY") {
+		@array = @{$ref};
+	}
+	if (ref($ref) eq "HASH") {
+		push @array, $ref;
+	}
+
+	foreach my $ref (@array) {
+		push @data, join(",", map { conv_csv_str($ref->{$_}) } @{$keys});
+	}
+	return join("\n", @data);
+}
+
+
+sub ref2ltsv {
+
+	my($ref, $keys) = @_;
+
+	my @data;
+
+	my @array;
+	if (ref($ref) eq "ARRAY") {
+		@array = @{$ref};
+	}
+	if (ref($ref) eq "HASH") {
+		push @array, $ref;
+	}
+
+	foreach my $ref (@array) {
+		push @data, join("\t", map { sprintf("%s:%s", $_, conv_ltsv_str($ref->{$_})) } @{$keys});
+	}
+	return join("\n", @data);
 }
 
 sub trim {

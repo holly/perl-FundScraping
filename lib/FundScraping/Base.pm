@@ -8,7 +8,7 @@ use parent qw(Class::Accessor);
 use FundScraping::Util qw(:all);
 use Storable qw(lock_nstore lock_retrieve);
 
-__PACKAGE__->mk_accessors(qw(driver cache_dir force no_store_cache updated _cache));
+__PACKAGE__->mk_accessors(qw(driver cache_dir force store_cache updated _cache));
 
 sub new {
 
@@ -65,11 +65,11 @@ sub convert {
 	if ($format eq "json") {
 		return ref2json($ref, $pretty);
 	} elsif ($format eq "ltsv") {
-		return array2ltsv($ref, \@keys);
+		return ref2ltsv($ref, \@keys);
 	} elsif ($format eq "csv") {
-		return array2csv($ref, \@keys);
+		return ref2csv($ref, \@keys);
 #	} elsif ($format eq "csv2") {
-#		return array2csv($ref, [@KEYS], [@KEYS_JP]);
+#		return ref2csv($ref, [@KEYS], [@KEYS_JP]);
 	} else {
 		return ref2dumper($ref);
 	}
@@ -95,10 +95,9 @@ sub DESTROY {
 
 	my $self = shift;
 
-	if ($self->no_store_cache) {
-		return;
+	if ($self->store_cache) {
+		$self->save_cache;
 	}
-	$self->save_cache;
 }
 
 

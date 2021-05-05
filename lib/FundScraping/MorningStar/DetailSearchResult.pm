@@ -20,7 +20,7 @@ sub _init {
 
 	my $self = shift;
 
-	$self->no_store_cache(1);
+	$self->store_cache(undef);
 }
 
 sub clear_cache {
