@@ -7,6 +7,8 @@ use feature qw(say);
 use parent qw(FundScraping::Base);
 use Encode;
 use File::Spec;
+use File::Basename;
+use File::pushd;
 use POSIX qw(strftime);
 use FundScraping::Util qw(:all);
 use Text::ParseWords;
@@ -51,7 +53,11 @@ sub save_rotate_file {
 	if (-l $symlink) {
 		unlink $symlink;
 	}
-	symlink $rotate_file, $symlink;
+	my $dir = dirname($rotate_file);
+	{
+		pushd $dir;
+		symlink basename($rotate_file), basename($symlink);
+	}
 }
 
 sub merge {
