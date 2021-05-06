@@ -27,11 +27,8 @@ while (my $line = <STDIN>) {
 }
 
 my $enc = guess_encoding($data);
-if (ref($enc)) {
-	$data = $enc->decode($data);
-} else {
-	$data = Encode::decode("guess", $data);
-}
+my $name = ref($enc) ? $enc->name : "guess";
+$data = Encode::decode($name, $data);
 
 binmode STDOUT, ":utf8";
 my $ref = csv2ref($data);
