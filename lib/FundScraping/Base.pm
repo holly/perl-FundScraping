@@ -54,12 +54,15 @@ sub convert {
 	my($self, $ref, $opts) = @_;
 	my $class = ref($self);
 
-	my $format = ref($opts) eq "HASH" ? $opts->{format} : "dumper";
-	my $pretty = ref($opts) eq "HASH" ? $opts->{pretty} : undef;
-	my @keys;
-	{
-		no strict "refs";
-		@keys = @{ref($self) . "::KEYS"};
+	my($format, $pretty, @keys);
+	$format = ref($opts) eq "HASH" ? $opts->{format} : "dumper";
+	$pretty = ref($opts) eq "HASH" ? $opts->{pretty} : undef;
+	@keys   = ref($opts) eq "HASH" && ref($opts->{keys}) eq "ARRAY" ? @{$opts->{keys}} : ();
+	if (scalar(@keys) == 0) {
+		{
+			no strict "refs";
+			@keys = @{ref($self) . "::KEYS"};
+		}
 	}
 
 	if ($format eq "json") {

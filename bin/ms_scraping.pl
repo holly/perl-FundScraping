@@ -14,7 +14,10 @@ use Pod::Usage 'pod2usage';
 
 our $CACHE_DIR = File::Spec->catfile($ENV{HOME}, ".fund_cache");
 our $FORMAT    = "json";
-our $HANDLERS  = { new_fund => \&new_fund, detail_search_result => \&detail_search_result };
+our $HANDLERS  = { 
+				new_fund             => \&new_fund,
+				detail_search_result => \&detail_search_result,
+			};
 
 our $VERSION = '1.0';
 our $AUTHOR  = 'holly';
@@ -91,7 +94,7 @@ my $res = GetOptions(
 							handler => \$opts{word}
 						}
 					}
-				}
+				},
 			}
 		);
 
@@ -110,17 +113,7 @@ my $fund = FundScraping->new({
 my $subcommand = $res->{subcommand}->[0];
 my $obj = $fund->load("morning_star", $subcommand);
 
-my $output = $HANDLERS->{$subcommand}->();
-
-if ($opts{output}) {
-	my $binmode = $opts{format} eq "csv" ? ":encoding(cp932)" : ":utf8";
-	save_file($output, $opts{output}, $binmode);
-} else {
-	binmode STDOUT, ":utf8";
-	say $output;
-}
-
-$obj = undef;
+$HANDLERS->{$subcommand}->();
 
 exit;
 
@@ -141,7 +134,7 @@ sub new_fund {
 
 	if (!$obj->updated) {
 		say "not updated. exit.";
-		exit;
+		exit 1;
 	}
 
 	my @urllist = $obj->get_newfunds_urllist;
@@ -153,7 +146,7 @@ sub new_fund {
 	}
 
 	my $output = trim($obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} }));
-	return $output;
+	_output($output);
 }
 
 sub detail_search_result {
@@ -173,7 +166,19 @@ sub detail_search_result {
 		exit 1;
 	}
 	my $output = trim($obj->convert(\@funds, { format => $opts{format}, pretty => $opts{pretty} }));
-	return $output;
+	_output($output);
+}
+
+sub _output {
+
+	my $output = shift;
+	if ($opts{output}) {
+		my $binmode = $opts{format} eq "csv" ? ":encoding(cp932)" : ":utf8";
+		save_file($output, $opts{output}, $binmode);
+	} else {
+		binmode STDOUT, ":utf8";
+		say $output;
+	}
 }
 
 __END__
