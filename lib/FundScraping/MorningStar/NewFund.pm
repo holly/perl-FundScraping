@@ -18,6 +18,7 @@ sub _init {
 
 	my $self = shift;
 
+	$self->keys(\@KEYS);
 	$self->read_cache;
 
 	my $last_updated = $self->get_newfunds_last_updated;

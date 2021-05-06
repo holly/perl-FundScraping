@@ -20,13 +20,8 @@ sub _init {
 
 	my $self = shift;
 
+	$self->keys(\@KEYS);
 	$self->store_cache(undef);
-}
-
-sub clear_cache {
-
-	my $self = shift;
-
 }
 
 sub get_search_funds_count {
@@ -98,7 +93,6 @@ SCRIPT
 	# 検索結果テーブルの行要素を取得
 	# //*[@id="sresult1"]/form/table/tbody/tr[2]/td[1]/a
 	my $elems = wait_until { $self->driver->find_elements('//*[@id="sresult1"]/form/table/tbody/tr') };
-
 
 	foreach my $elem (@{$elems}) {
 		my $children = $self->driver->find_child_elements($elem, './td');

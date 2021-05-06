@@ -8,7 +8,7 @@ use parent qw(Class::Accessor);
 use FundScraping::Util qw(:all);
 use Storable qw(lock_nstore lock_retrieve);
 
-__PACKAGE__->mk_accessors(qw(driver cache_dir force store_cache updated _cache));
+__PACKAGE__->mk_accessors(qw(driver cache_dir force keys store_cache updated _cache));
 
 sub new {
 
@@ -57,13 +57,13 @@ sub convert {
 	my($format, $pretty, @keys);
 	$format = ref($opts) eq "HASH" ? $opts->{format} : "dumper";
 	$pretty = ref($opts) eq "HASH" ? $opts->{pretty} : undef;
-	@keys   = ref($opts) eq "HASH" && ref($opts->{keys}) eq "ARRAY" ? @{$opts->{keys}} : ();
-	if (scalar(@keys) == 0) {
-		{
-			no strict "refs";
-			@keys = @{ref($self) . "::KEYS"};
-		}
-	}
+	@keys   = ref($opts) eq "HASH" && ref($opts->{keys}) eq "ARRAY" ? @{$opts->{keys}} : $self->keys;
+	#if (scalar(@keys) == 0) {
+	#	{
+	#		no strict "refs";
+	#		@keys = @{ref($self) . "::KEYS"};
+	#	}
+	#}
 
 	if ($format eq "json") {
 		return ref2json($ref, $pretty);
