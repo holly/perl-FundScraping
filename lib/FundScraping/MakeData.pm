@@ -53,9 +53,8 @@ sub save_rotate_file {
 	if (-l $symlink) {
 		unlink $symlink;
 	}
-	my $dir = dirname($rotate_file);
 	{
-		pushd $dir;
+		my $dir = pushd(dirname($symlink));
 		symlink basename($rotate_file), basename($symlink);
 	}
 }
