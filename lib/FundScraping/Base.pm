@@ -54,10 +54,10 @@ sub convert {
 	my($self, $ref, $opts) = @_;
 	my $class = ref($self);
 
-	my($format, $pretty, @keys);
-	$format = ref($opts) eq "HASH" ? $opts->{format} : "dumper";
-	$pretty = ref($opts) eq "HASH" ? $opts->{pretty} : undef;
-	@keys   = ref($opts) eq "HASH" && ref($opts->{keys}) eq "ARRAY" ? @{$opts->{keys}} : $self->keys;
+	my($format, $pretty, $arrayref);
+	$format   = ref($opts) eq "HASH" ? $opts->{format} : "dumper";
+	$pretty   = ref($opts) eq "HASH" ? $opts->{pretty} : undef;
+	$arrayref = ref($opts) eq "HASH" && ref($opts->{keys}) eq "ARRAY" ? $opts->{keys} : $self->keys;
 	#if (scalar(@keys) == 0) {
 	#	{
 	#		no strict "refs";
@@ -68,9 +68,9 @@ sub convert {
 	if ($format eq "json") {
 		return ref2json($ref, $pretty);
 	} elsif ($format eq "ltsv") {
-		return ref2ltsv($ref, \@keys);
+		return ref2ltsv($ref, $arrayref);
 	} elsif ($format eq "csv") {
-		return ref2csv($ref, \@keys);
+		return ref2csv($ref, $arrayref);
 #	} elsif ($format eq "csv2") {
 #		return ref2csv($ref, [@KEYS], [@KEYS_JP]);
 	} else {
