@@ -187,7 +187,17 @@ sub snap_shot {
 		say "fnc is not defined. exit.";
 		exit 1;
 	}
+	if ($fnc !~ /^\d{10}/) {
+		say "fnc is must be 10 digits code. exit.";
+		exit 1;
+	}
 	my $fund = $obj->get_fund($opts{fnc});
+
+	if (!ref($fund)) {
+		say "fnc($fnc) is not exists. exit.";
+		exit 1;
+	}
+
 	my $output = trim($obj->convert($fund, { format => $opts{format}, pretty => $opts{pretty} }));
 	return $output;
 }
