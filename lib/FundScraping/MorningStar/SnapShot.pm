@@ -12,7 +12,7 @@ use Selenium::Waiter;
 use FundScraping::Util qw(:all);
 
 our @KEYS  = qw(fund_name fund_company rating net_asset_value_per_share amount_of_net_assets category risk_measure trust_fee association_code fund_code url overview);
-our $URL   = "https://www.morningstar.co.jp/FundData/SnapShot.do?fnc=%s";
+our $URL   = "https://portal.morningstarjp.com/FundData/SnapShot.do?fnc=%s";
 
 
 sub _init {
@@ -59,8 +59,22 @@ sub get_fund {
 
 	foreach my $key (keys %xpaths) {
 		my $xpath = $xpaths{$key};
-		my $elem = wait_until { $self->driver->find_element($xpath) };
-		$ref->{$key} = trim($elem->get_text);
+		#my $elem = wait_until { $self->driver->find_element($xpath) };
+		my $elem;
+		$elem = wait_until { $self->driver->find_element($xpath) };
+		if (!ref($elem)) {
+			# 検索対象無
+			return;
+		}
+		my $text = trim($elem->get_text);
+
+		if ($key eq "fund_company") {
+			$text =~ s/^投信会社名：//;
+		}
+		if ($key eq "amount_of_net_assets") {
+			$text =~ s/百万円$//;
+		}
+		$ref->{$key} = $text;
 	}
 
 	$ref->{fnc} = $fnc;
