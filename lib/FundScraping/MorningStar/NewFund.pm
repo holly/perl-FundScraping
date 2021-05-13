@@ -21,8 +21,8 @@ sub _init {
 	$self->keys(\@KEYS);
 	$self->read_cache;
 
-	my $last_updated = $self->get_newfunds_last_updated;
-	if ($self->is_newfunds_updated($last_updated)) {
+	my $last_updated = $self->get_last_updated;
+	if ($self->is_updated($last_updated)) {
 		$self->updated(1);
 	} else {
 		$self->updated(undef);
@@ -65,7 +65,7 @@ sub clear_cache {
 }
 
 
-sub get_newfunds_last_updated {
+sub get_last_updated {
 
 	my $self = shift;
 
@@ -80,7 +80,7 @@ sub get_newfunds_last_updated {
 	return $last_updated;
 }
 
-sub get_newfunds_urllist {
+sub get_urllist {
 
 	my $self = shift;
 
@@ -91,7 +91,7 @@ sub get_newfunds_urllist {
 	return @urllist;
 }
 
-sub get_newfund_detail {
+sub get_fund {
 
 	my($self, $url) = @_;
 
@@ -131,20 +131,20 @@ sub get_newfund_detail {
 	return $ref;
 }
 
-sub get_newfund_details {
+sub get_funds {
 
-	my($self, @newfunds_urllist) = @_;
+	my($self, $newfunds_urllist) = @_;
 
 	my @urllist = @{$self->urllist};
 	my @alldata;
 
 	LOOP_OF_NEW_URLLIST:
-	foreach my $url (@newfunds_urllist) {
+	foreach my $url (@{$newfunds_urllist}) {
 
 		if(!$self->force && in_array($url, \@urllist)) {
 			next;
 		}
-		push @alldata, $self->get_newfund_detail($url);
+		push @alldata, $self->get_fund($url);
 		push @urllist, $url;
 	}
 	$self->urllist([array_dedup(@urllist)]);
@@ -152,7 +152,7 @@ sub get_newfund_details {
 }
 
 
-sub is_newfunds_updated {
+sub is_updated {
 
 	my ($self, $last_updated) = @_;
 

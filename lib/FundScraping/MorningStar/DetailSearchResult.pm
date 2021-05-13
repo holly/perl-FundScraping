@@ -24,7 +24,7 @@ sub _init {
 	$self->store_cache(undef);
 }
 
-sub get_search_funds_count {
+sub get_funds_count {
 
 	my($self, $word) = @_;
 
@@ -53,13 +53,12 @@ SCRIPT
 
 }
 
-
-sub get_search_funds {
+sub get_funds {
 
 	my($self, $word, $page) = @_;
 
 	my @funds;
-	my $count = $self->get_search_funds_count($word);
+	my $count = $self->get_funds_count($word);
 
 	if ($count == 0) {
 		return @funds;
@@ -125,7 +124,6 @@ SCRIPT
 	}
 	return @funds;
 }
-
 
 
 1;

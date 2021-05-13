@@ -15,8 +15,9 @@ use Pod::Usage 'pod2usage';
 our $CACHE_DIR = File::Spec->catfile($ENV{HOME}, ".fund_cache");
 our $FORMAT    = "json";
 our $HANDLERS  = { 
-				new_fund             => \&new_fund,
 				detail_search_result => \&detail_search_result,
+				new_fund             => \&new_fund,
+				snap_shot            => \&snap_shot,
 			};
 
 our $VERSION = '1.0';
@@ -95,6 +96,14 @@ my $res = GetOptions(
 						}
 					}
 				},
+				snap_shot => {
+					summary => "parse snap_shot",
+					options => {
+						'fnc=i' => {
+							handler => \$opts{fnc}
+						},
+					}
+				},
 			}
 		);
 
@@ -113,7 +122,8 @@ my $fund = FundScraping->new({
 my $subcommand = $res->{subcommand}->[0];
 my $obj = $fund->load("morning_star", $subcommand);
 
-$HANDLERS->{$subcommand}->();
+my $output = $HANDLERS->{$subcommand}->();
+_output($output);
 
 exit;
 
@@ -137,16 +147,16 @@ sub new_fund {
 		exit 1;
 	}
 
-	my @urllist = $obj->get_newfunds_urllist;
-	my @details = $obj->get_newfund_details(@urllist);
+	my @urllist = $obj->get_urllist;
+	my @funds = $obj->get_funds(\@urllist);
 
-	if (scalar(@details) == 0) {
+	if (scalar(@funds) == 0) {
 		say "new fund is not exists. exit.";
 		exit;
 	}
 
-	my $output = trim($obj->convert(\@details, { format => $opts{format}, pretty => $opts{pretty} }));
-	_output($output);
+	my $output = trim($obj->convert(\@funds, { format => $opts{format}, pretty => $opts{pretty} }));
+	return $output;
 }
 
 sub detail_search_result {
@@ -158,15 +168,28 @@ sub detail_search_result {
 	}
 	my $decoded_word = decode_utf8($word);
 	if ($opts{count}) {
-		return $obj->get_search_funds_count($decoded_word);
+		my $count = $obj->get_funds_count($decoded_word);
+		return $count;
 	}
-	my @funds = $obj->get_search_funds($decoded_word, $opts{page});
+	my @funds = $obj->get_funds($decoded_word, $opts{page});
 	if (scalar(@funds) == 0) {
 		say "fund ($word) is not exists. exit.";
 		exit 1;
 	}
 	my $output = trim($obj->convert(\@funds, { format => $opts{format}, pretty => $opts{pretty} }));
-	_output($output);
+	return $output;
+}
+
+sub snap_shot {
+
+	my $fnc = $opts{fnc};
+	if (!$fnc) {
+		say "fnc is not defined. exit.";
+		exit 1;
+	}
+	my $fund = $obj->get_fund($opts{fnc});
+	my $output = trim($obj->convert($fund, { format => $opts{format}, pretty => $opts{pretty} }));
+	return $output;
 }
 
 sub _output {
@@ -190,6 +213,7 @@ ms_scraping.pl [subcommand] [option...]
   Subcommand:
     new_fund
     detail_search_result
+    snap_shot
 
   Options:
     --cache-dir       script cache directory
