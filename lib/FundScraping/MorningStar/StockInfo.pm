@@ -9,6 +9,7 @@ use Encode;
 use Fcntl qw(:DEFAULT :flock :seek);
 use File::Spec;
 use Selenium::Waiter;
+use Time::Piece;
 use FundScraping::Util qw(:all);
 
 our @KEYS  = qw(stock_name open high low end end_decition_date volume end_before high_of_year low_of_year outstanding_shares);
@@ -67,6 +68,16 @@ sub get_stock {
 		}
 		my $text = trim($elem->get_text);
 
+		if ($key eq "end_decision_date") {
+			my $t = localtime;
+			my $current_year = $t->year;
+			my($month, $day) = split /\//, $text;
+			$month =~ s/^0//;
+			if ($month > $t->mon) {
+				$current_year--;
+			}
+			$text = sprintf "%04d/%02d/%02d", $current_year, $month, $day;
+		}
 		$ref->{$key} = $text;
 	}
 
