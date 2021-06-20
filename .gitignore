@@ -36,3 +36,4 @@ inc/
 
 # original
 local/
+cpanfile.snapshot

@@ -1,6 +1,7 @@
 requires 'Class::Accessor';
 requires 'JSON';
 requires 'Getopt::Long::Subcommand';
+requires 'HTML::TreeBuilder';
 requires 'LWP::UserAgent';
 requires 'LWP::Protocol::https';
 requires 'Selenium::Remote::Driver';
