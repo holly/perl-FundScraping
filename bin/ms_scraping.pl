@@ -18,6 +18,7 @@ our $HANDLERS  = {
 				detail_search_result => \&detail_search_result,
 				new_fund             => \&new_fund,
 				snap_shot            => \&snap_shot,
+				stock_info           => \&stock_info,
 			};
 
 our $VERSION = '1.0';
@@ -101,6 +102,14 @@ my $res = GetOptions(
 					options => {
 						'fnc=i' => {
 							handler => \$opts{fnc}
+						},
+					}
+				},
+				stock_info => {
+					summary => "parse stock_info",
+					options => {
+						'stock-number=i' => {
+							handler => \$opts{stock_number}
 						},
 					}
 				},
@@ -191,7 +200,7 @@ sub snap_shot {
 		say "fnc is must be 10 digits code. exit.";
 		exit 1;
 	}
-	my $fund = $obj->get_fund($opts{fnc});
+	my $fund = $obj->get_fund($fnc);
 
 	if (!ref($fund)) {
 		say "fnc($fnc) is not exists. exit.";
@@ -199,6 +208,28 @@ sub snap_shot {
 	}
 
 	my $output = trim($obj->convert($fund, { format => $opts{format}, pretty => $opts{pretty} }));
+	return $output;
+}
+
+sub stock_info {
+
+	my $stock_number = $opts{stock_number};
+	if (!$stock_number) {
+		say "stock_number is not defined. exit.";
+		exit 1;
+	}
+	if ($stock_number !~ /^\d{4}/) {
+		say "stock_number is must be 4 digits code. exit.";
+		exit 1;
+	}
+	my $stock = $obj->get_stock($stock_number);
+
+	if (!ref($stock)) {
+		say "stock_number($stock_number) is not exists. exit.";
+		exit 1;
+	}
+
+	my $output = trim($obj->convert($stock, { format => $opts{format}, pretty => $opts{pretty} }));
 	return $output;
 }
 
@@ -224,6 +255,7 @@ ms_scraping.pl [subcommand] [option...]
     new_fund
     detail_search_result
     snap_shot
+    stock_info
 
   Options:
     --cache-dir       script cache directory
